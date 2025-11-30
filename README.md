@@ -2,6 +2,20 @@
 
 **Your AI-Powered Interview Preparation Companion**
 
+> [!IMPORTANT]
+> **⚠️ NOTICE: Hackathon Submission Snapshot**
+>
+> This repository contains a **frozen snapshot** of the JobReady application, released under Apache License 2.0 solely for the purpose of the **IIT Bombay E-Summit 2025 iHack Google AdMob Challenge**.
+>
+> **Development Timeline:**
+> *   **Start Date:** November 26, 2025 (Commenced specifically for this challenge after receiving confirmation from authorities).
+> *   **Submission Date:** November 30, 2025 (Codebase initialized in this repository for submission).
+>
+> **Active development of JobReady continues in a private, proprietary repository.**
+> Future versions, updates, backend services, and AI models are **NOT** open source and remain the exclusive intellectual property of Devendra Sharma.
+>
+> The "JobReady" name and logo are trademarks of Devendra Sharma and may not be used in derivative works without permission.
+
 JobReady is a comprehensive mobile application designed to help job seekers prepare for interviews, optimize their resumes, and craft perfect job applications using the power of Generative AI.
 
 ## 🚀 Features
