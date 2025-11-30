@@ -1,0 +1,92 @@
+Running Gradle task 'assembleDebug'...                          
+Warning: Flutter support for your project's Kotlin version (1.9.0) will soon be dropped. Please upgrade your Kotlin version to a version of at least 2.1.0 soon.
+Alternatively, use the flag "--android-skip-build-dependency-validation" to bypass this check.
+
+Potential fix: Your project's KGP version is typically defined in the plugins block of the `settings.gradle` file (/Users/apple/.gemini/antigravity/scratch/new_project/android/settings.gradle), by a plugin with the id of org.jetbrains.kotlin.android. 
+If you don't see a plugins block, your project was likely created with an older template version, in which case it is most likely defined in the top-level build.gradle file (/Users/apple/.gemini/antigravity/scratch/new_project/android/build.gradle) by the ext.kotlin_version property.
+
+Warning: The plugin path_provider_android requires Android SDK version 36 or higher.
+For more information about build configuration, see https://flutter.dev/to/review-gradle-config.
+Warning: The plugin record_android requires Android SDK version 36 or higher.
+For more information about build configuration, see https://flutter.dev/to/review-gradle-config.
+Warning: The plugin shared_preferences_android requires Android SDK version 36 or higher.
+For more information about build configuration, see https://flutter.dev/to/review-gradle-config.
+Warning: The plugin url_launcher_android requires Android SDK version 36 or higher.
+For more information about build configuration, see https://flutter.dev/to/review-gradle-config.
+Warning: The plugin webview_flutter_android requires Android SDK version 36 or higher.
+For more information about build configuration, see https://flutter.dev/to/review-gradle-config.
+Your project is configured to compile against Android SDK 34, but the following plugin(s) require to be compiled against a higher Android SDK version:
+- path_provider_android compiles against Android SDK 36
+- record_android compiles against Android SDK 36
+- shared_preferences_android compiles against Android SDK 36
+- url_launcher_android compiles against Android SDK 36
+- webview_flutter_android compiles against Android SDK 36
+Fix this issue by compiling against the highest Android SDK version (they are backward compatible).
+Add the following to /Users/apple/.gemini/antigravity/scratch/new_project/android/app/build.gradle.kts:
+
+    android {
+        compileSdk = 36
+        ...
+    }
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:checkDebugAarMetadata'.
+> A failure occurred while executing com.android.build.gradle.internal.tasks.CheckAarMetadataWorkAction
+   > 3 issues were found when checking AAR metadata:
+
+       1.  Dependency 'androidx.browser:browser:1.9.0' requires libraries and applications that
+           depend on it to compile against version 36 or later of the
+           Android APIs.
+
+           :app is currently compiled against android-34.
+
+           Recommended action: Update this project to use a newer compileSdk
+           of at least 36, for example 36.
+
+           Note that updating a library or application's compileSdk (which
+           allows newer APIs to be used) can be done separately from updating
+           targetSdk (which opts the app in to new runtime behavior) and
+           minSdk (which determines which devices the app can be installed
+           on).
+
+       2.  Dependency 'androidx.core:core-ktx:1.17.0' requires libraries and applications that
+           depend on it to compile against version 36 or later of the
+           Android APIs.
+
+           :app is currently compiled against android-34.
+
+           Recommended action: Update this project to use a newer compileSdk
+           of at least 36, for example 36.
+
+           Note that updating a library or application's compileSdk (which
+           allows newer APIs to be used) can be done separately from updating
+           targetSdk (which opts the app in to new runtime behavior) and
+           minSdk (which determines which devices the app can be installed
+           on).
+
+       3.  Dependency 'androidx.core:core:1.17.0' requires libraries and applications that
+           depend on it to compile against version 36 or later of the
+           Android APIs.
+
+           :app is currently compiled against android-34.
+
+           Recommended action: Update this project to use a newer compileSdk
+           of at least 36, for example 36.
+
+           Note that updating a library or application's compileSdk (which
+           allows newer APIs to be used) can be done separately from updating
+           targetSdk (which opts the app in to new runtime behavior) and
+           minSdk (which determines which devices the app can be installed
+           on).
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 5s
+Running Gradle task 'assembleDebug'...                              5.7s
+Gradle task assembleDebug failed with exit code 1

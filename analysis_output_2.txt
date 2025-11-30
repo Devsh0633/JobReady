@@ -1,0 +1,14 @@
+Analyzing new_project...                                        
+
+   info • Unnecessary use of multiple underscores • lib/features/community/debug/explain_ranking_screen.dart:125:20 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/community/debug/explain_ranking_screen.dart:190:20 • unnecessary_underscores
+   info • Don't invoke 'print' in production code • lib/features/community/debug/score_debug_store.dart:56:7 • avoid_print
+   info • Unnecessary use of multiple underscores • lib/features/profile/presentation/activity_screen.dart:80:29 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/profile/presentation/activity_screen.dart:112:29 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/profile/presentation/activity_screen.dart:160:29 • unnecessary_underscores
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:40:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:42:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:44:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:49:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:175:23 • avoid_print
+

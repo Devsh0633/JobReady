@@ -1,0 +1,20 @@
+Analyzing new_project...                                        
+
+warning • Unused import: 'debug_control_store.dart' • lib/features/community/debug/debug_console_screen.dart:5:8 • unused_import
+   info • Unnecessary use of multiple underscores • lib/features/community/debug/explain_ranking_screen.dart:125:20 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/community/debug/explain_ranking_screen.dart:190:20 • unnecessary_underscores
+   info • Don't invoke 'print' in production code • lib/features/community/debug/score_debug_store.dart:56:7 • avoid_print
+  error • Expected a method, getter, setter or operator declaration • lib/features/community/logic/community_store.dart:1:1 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/community/logic/community_store.dart:1:2 • expected_executable
+  error • Expected a method, getter, setter or operator declaration • lib/features/community/logic/community_store.dart:1:3 • expected_executable
+  error • The named parameter 'userDisplayName' isn't defined • lib/features/community/logic/community_store.dart:546:7 • undefined_named_parameter
+  error • Undefined name 'userDisplayName' • lib/features/community/logic/community_store.dart:1695:24 • undefined_identifier
+   info • Unnecessary use of multiple underscores • lib/features/profile/presentation/activity_screen.dart:80:29 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/profile/presentation/activity_screen.dart:112:29 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/profile/presentation/activity_screen.dart:160:29 • unnecessary_underscores
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:40:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:42:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:44:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:49:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/speaker/presentation/speaker_screen.dart:175:23 • avoid_print
+

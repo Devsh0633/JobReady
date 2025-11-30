@@ -1,0 +1,14 @@
+Analyzing new_project...                                        
+
+warning • The value of the field '_formKey' isn't used • lib/auth_screens.dart:302:9 • unused_field
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/auth_screens.dart:542:13 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/auth_screens.dart:559:13 • deprecated_member_use
+warning • Unused import: 'package:url_launcher/url_launcher.dart' • lib/main.dart:2:8 • unused_import
+warning • Unused import: 'services/profile_service.dart' • lib/main.dart:3:8 • unused_import
+  error • The named parameter 'profile' is required, but there's no corresponding argument • lib/main.dart:40:49 • missing_required_argument
+warning • The declaration '_getSubjectLine' isn't referenced • lib/main.dart:606:10 • unused_element
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/main.dart:1069:15 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/main.dart:1109:15 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/main.dart:1134:15 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/main.dart:1260:13 • deprecated_member_use
+

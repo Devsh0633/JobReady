@@ -1,0 +1,1726 @@
+import 'package:flutter/material.dart';
+import 'models/user_profile.dart';
+import 'auth_screens.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
+import 'services/speech_analyzer.dart';
+import 'data/interview_questions.dart';
+import 'question_bank/screens/question_bank_industry_selector_screen.dart';
+import 'features/dashboard/presentation/dashboard_screen.dart';
+
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        primaryColor: const Color(0xFF1565C0),
+        scaffoldBackgroundColor: Colors.white,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1565C0),
+          primary: const Color(0xFF1565C0),
+          surface: Colors.white,
+        ),
+        useMaterial3: true,
+        textTheme: GoogleFonts.poppinsTextTheme(),
+      ),
+      home: const AuthGate(),
+      routes: {
+        '/dashboard': (context) => const DashboardScreen(),
+        '/mode_selection': (context) => const ModeSelectionScreen(),
+        '/writer': (context) => const WriterScreen(),
+        '/speaker': (context) => const SpeakerScreen(),
+        '/leaks': (context) => const InterviewLeaksScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/signup': (context) => const SignupScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
+      },
+    );
+  }
+}
+
+// Placeholder Screens
+
+class ModeSelectionScreen extends StatelessWidget {
+  const ModeSelectionScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    String industry = "IT & Software";
+    if (args is String) {
+      industry = args;
+    } else if (args is Map) {
+      industry = args['industry'] ?? "IT & Software";
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Select Mode'),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Selected Industry:',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      industry,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    _buildModeButton(
+                      context,
+                      'Write My Application',
+                      Icons.edit_document,
+                      () {
+                        Navigator.pushNamed(
+                          context,
+                          '/writer',
+                          arguments: industry,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModeButton(
+                      context,
+                      'Practice Interview',
+                      Icons.mic,
+                      () {
+                        Navigator.pushNamed(
+                          context,
+                          '/speaker',
+                          arguments: {'industry': industry},
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Ad Banner Placeholder
+            Container(
+              height: 60,
+              width: double.infinity,
+              color: Colors.grey[200],
+              alignment: Alignment.center,
+              child: Text(
+                'Ad Banner Area',
+                style: GoogleFonts.poppins(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    VoidCallback onPressed,
+  ) {
+    return SizedBox(
+      width: double.infinity,
+      height: 64,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class WriterScreen extends StatefulWidget {
+  const WriterScreen({super.key});
+
+  @override
+  State<WriterScreen> createState() => _WriterScreenState();
+}
+
+class _WriterScreenState extends State<WriterScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Form Fields
+  String? _selectedDocType;
+  String? _selectedExperience;
+  String? _selectedSkill;
+  String _selectedTone = "Formal";
+
+  // New Fields for Advanced Customization
+  bool _addSignature = false;
+  bool _optimizeATS = false;
+  String _previewMode = "Email Format";
+
+  // Achievement Inputs
+  final _achievementRoleController = TextEditingController();
+  final _achievementMetricController = TextEditingController();
+  final _achievementResultController = TextEditingController();
+
+  final _nameController = TextEditingController();
+  final _customSkillController = TextEditingController();
+  final _companyController = TextEditingController();
+  final _roleController = TextEditingController();
+  final _resumeController = TextEditingController();
+  final _portfolioController = TextEditingController();
+
+  String _generatedContent = '';
+
+  // Options
+  final List<String> _docTypes = [
+    "Cover Letter",
+    "LinkedIn Note",
+    "Cold Email"
+  ];
+
+  final List<String> _experienceLevels = [
+    "Fresher (0 years)",
+    "1–3 years",
+    "3–5 years"
+  ];
+
+  final List<String> _tones = ["Formal", "Warm", "Salesy / Persuasive"];
+
+  // Data Structures for Advanced Features
+  final Map<String, List<String>> _industryStrengths = {
+    "IT & Software": [
+      "Problem-solving",
+      "Clean code practices",
+      "Learning new technologies fast",
+      "Team collaboration"
+    ],
+    "Sales & Marketing": [
+      "Building rapport",
+      "Handling objections",
+      "Consistent follow-up",
+      "Target ownership"
+    ],
+    "Core Engineering": [
+      "Attention to detail",
+      "Hands-on site experience",
+      "Safety awareness"
+    ],
+    "BPO & Support": [
+      "Empathetic communication",
+      "Patience",
+      "Calm under pressure"
+    ],
+  };
+
+  final Map<String, List<String>> _roleSuggestions = {
+    "IT & Software": [
+      "Software Developer",
+      "Support Engineer",
+      "Frontend Developer"
+    ],
+    "Sales & Marketing": [
+      "Business Development Associate",
+      "Inside Sales Executive",
+      "Sales Coordinator"
+    ],
+    "Core Engineering": [
+      "Site Engineer",
+      "Graduate Trainee Engineer",
+      "Maintenance Engineer"
+    ],
+    "BPO & Support": [
+      "Customer Support Associate",
+      "Process Executive",
+      "Voice Process Associate"
+    ],
+  };
+
+  final Map<String, List<String>> _atsKeywords = {
+    "IT & Software": ["OOP", "REST APIs", "Git & GitHub"],
+    "Sales & Marketing": ["CRM tools", "Pipeline management"],
+    "Core Engineering": ["Preventive maintenance", "Safety protocols"],
+    "BPO & Support": ["Ticketing systems", "SLA compliance"],
+  };
+
+  // State Variables
+  final List<String> _selectedStrengths = [];
+  String _achievementSentence = "";
+
+
+  final Map<String, List<String>> _industrySkills = {
+    "IT & Software": [
+      "Java",
+      "Python",
+      "Full-Stack Web Development",
+      "Data Structures & Algorithms",
+      "SQL / Databases",
+      "Other"
+    ],
+    "Sales & Marketing": [
+      "B2B Sales",
+      "Inside Sales",
+      "Digital Marketing",
+      "Lead Generation",
+      "Client Relationship Management",
+      "Other"
+    ],
+    "Core Engineering": [
+      "Electrical Maintenance",
+      "Mechanical Design",
+      "AutoCAD / SolidWorks",
+      "Site Supervision",
+      "Quality Control",
+      "Other"
+    ],
+    "BPO & Support": [
+      "Customer Support",
+      "Voice Process",
+      "Non-Voice Process",
+      "Email Support",
+      "Problem Solving",
+      "Other"
+    ],
+  };
+
+  // Templates: Industry -> DocType -> Experience -> Template
+  final Map<String, Map<String, Map<String, String>>> _advancedTemplates = {
+    "IT & Software": {
+      "Cover Letter": {
+        "Fresher (0 years)":
+            "Dear Hiring Manager,\n\nI am writing to express my strong interest in the {role} position at {company}. As a recent graduate with a passion for technology, I have built a solid foundation in {skill} through academic projects and self-directed learning. I am eager to launch my career in a dynamic environment where I can contribute to innovative software solutions.\n\nDuring my studies, I developed a keen ability to solve complex problems and work effectively in team settings. I am a quick learner, adaptable to new technologies, and committed to writing clean, efficient code. I am confident that my enthusiasm and dedication would make me a valuable addition to your engineering team.\n\n{resumeLink}{portfolioLink}\n\nSincerely,\n{name}",
+        "1–3 years":
+            "Dear Hiring Manager,\n\nI am applying for the {role} position at {company} with great enthusiasm. With over 2 years of hands-on experience in the tech industry, specifically in {skill}, I have successfully delivered robust software solutions and contributed to key project milestones. I admire {company}'s commitment to innovation and would be honored to bring my technical expertise to your team.\n\nIn my previous roles, I have honed my skills in software development lifecycle, code optimization, and collaborative debugging. I take ownership of my tasks and thrive in fast-paced environments. I am looking for an opportunity to leverage my experience to drive impactful results at {company}.\n\n{resumeLink}{portfolioLink}\n\nBest regards,\n{name}",
+        "3–5 years":
+            "Dear Hiring Manager,\n\nI am writing to submit my candidacy for the {role} position at {company}. With close to 5 years of experience in software engineering and a deep specialization in {skill}, I have a proven track record of designing scalable architectures and leading technical initiatives. I have long admired {company}'s work and see this as a perfect opportunity to contribute to your continued success.\n\nThroughout my career, I have not only mastered technical stacks but also mentored junior developers and improved process efficiencies. I possess strong analytical skills and a strategic mindset for solving architectural challenges. I am eager to bring my experience and leadership potential to the {role} role.\n\n{resumeLink}{portfolioLink}\n\nSincerely,\n{name}",
+      },
+      "LinkedIn Note": {
+        "Fresher (0 years)":
+            "Hi,\n\nI am {name}, a recent graduate passionate about {skill}. I've been following {company}'s work and am very impressed by your innovations. I would appreciate the opportunity to connect and learn from your journey in the tech industry.\n\nThanks,\n{name}",
+        "1–3 years":
+            "Hello,\n\nI'm {name}, a software developer with experience in {skill}. I admire the work being done at {company} and would love to connect to discuss trends in software engineering and potential synergies.\n\nBest,\n{name}",
+        "3–5 years":
+            "Hi,\n\nI'm {name}, a seasoned engineer specializing in {skill}. I've been following {company}'s growth and would love to connect with fellow professionals to share insights on scalable software solutions.\n\nRegards,\n{name}",
+      },
+      "Cold Email": {
+        "Fresher (0 years)":
+            "Subject: Aspiring Developer for {role} at {company}\n\nHello,\n\nMy name is {name}, and I am a recent graduate with a strong focus on {skill}. I am writing to express my interest in the {role} opportunity at {company}. I am eager to apply my technical skills and contribute to your engineering goals.\n\nIf my profile aligns with your requirements, I would love to connect for a brief conversation. My resume is available at {resumeLink}, and you can explore my work at {portfolioLink}.\n\nBest regards,\n{name}",
+        "1–3 years":
+            "Subject: Application for {role} - {name}\n\nHi,\n\nI am {name}, a developer with experience in {skill}. I am reaching out to express my interest in the {role} position at {company}. I believe my background in building efficient software solutions aligns well with your team's needs.\n\nI would welcome the chance to discuss how I can contribute. My resume is available at {resumeLink}, and you can explore my work at {portfolioLink}.\n\nBest,\n{name}",
+        "3–5 years":
+            "Subject: Experienced Engineer for {role} - {name}\n\nHello,\n\nMy name is {name}, and I am an experienced software engineer specializing in {skill}. I am interested in the {role} opening at {company}. With a strong track record in delivering high-quality software, I am confident in my ability to make an immediate impact.\n\nI would love to discuss how my experience fits your team. My resume is available at {resumeLink}, and you can explore my work at {portfolioLink}.\n\nRegards,\n{name}",
+      },
+    },
+    "Sales & Marketing": {
+      "Cover Letter": {
+        "Fresher (0 years)":
+            "Dear Hiring Manager,\n\nI am writing to apply for the {role} position at {company}. As a motivated graduate with a flair for {skill}, I am eager to start my career in a results-driven environment. I have developed strong communication and analytical skills during my academic tenure and am ready to apply them to drive growth for your brand.\n\nI am a proactive learner who thrives on challenges and enjoys connecting with people. I am confident that my energy and dedication will allow me to make a positive contribution to your sales and marketing efforts.\n\n{resumeLink}{portfolioLink}\n\nSincerely,\n{name}",
+        "1–3 years":
+            "Dear Hiring Manager,\n\nI am excited to apply for the {role} position at {company}. With over 2 years of experience in driving growth through {skill}, I have a proven ability to meet targets and build lasting client relationships. I admire {company}'s market presence and would be thrilled to contribute to your continued expansion.\n\nIn my previous role, I successfully executed campaigns that resulted in measurable ROI. I am adaptable, data-driven, and passionate about understanding customer needs. I look forward to bringing my expertise to your team.\n\n{resumeLink}{portfolioLink}\n\nBest regards,\n{name}",
+        "3–5 years":
+            "Dear Hiring Manager,\n\nI am submitting my application for the {role} position at {company}. With close to 5 years of strategic experience in {skill}, I have successfully led high-impact campaigns and managed key accounts. I am impressed by {company}'s innovative approach and am eager to leverage my skills to drive your business objectives.\n\nMy background includes market analysis, team leadership, and revenue generation. I am a strategic thinker who can identify opportunities and execute effective plans. I am confident in my ability to deliver results for {company}.\n\n{resumeLink}{portfolioLink}\n\nSincerely,\n{name}",
+      },
+      "LinkedIn Note": {
+        "Fresher (0 years)":
+            "Hi,\n\nI'm {name}, a marketing enthusiast passionate about {skill}. I admire {company}'s brand strategy and would love to connect to learn from your experience in the industry.\n\nThanks,\n{name}",
+        "1–3 years":
+            "Hello,\n\nI'm {name}, a sales and marketing professional with experience in {skill}. I've been following {company}'s campaigns and would love to connect to discuss industry trends.\n\nBest,\n{name}",
+        "3–5 years":
+            "Hi,\n\nI'm {name}, a marketing strategist specializing in {skill}. I admire {company}'s market position and would love to connect with fellow leaders to share insights.\n\nRegards,\n{name}",
+      },
+      "Cold Email": {
+        "Fresher (0 years)":
+            "Subject: Aspiring Marketer for {role} at {company}\n\nHello,\n\nMy name is {name}, and I am a recent graduate with a passion for {skill}. I am writing to express my interest in the {role} opportunity at {company}. I am eager to learn and contribute to your marketing success.\n\nI would love to connect for a brief chat. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nBest regards,\n{name}",
+        "1–3 years":
+            "Subject: Application for {role} - {name}\n\nHi,\n\nI am {name}, a marketing professional with experience in {skill}. I am interested in the {role} position at {company}. I believe my background in driving engagement aligns well with your goals.\n\nI would welcome the chance to discuss how I can contribute. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nBest,\n{name}",
+        "3–5 years":
+            "Subject: Experienced Marketer for {role} - {name}\n\nHello,\n\nMy name is {name}, and I am an experienced marketer specializing in {skill}. I am interested in the {role} opening at {company}. With a strong track record in delivering results, I am confident in my ability to make an impact.\n\nI would love to discuss how my experience fits your team. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nRegards,\n{name}",
+      },
+    },
+    "Core Engineering": {
+      "Cover Letter": {
+        "Fresher (0 years)":
+            "Dear Hiring Manager,\n\nI am writing to apply for the {role} position at {company}. As a recent engineering graduate with a focus on {skill}, I am eager to apply my technical knowledge to real-world challenges. I have a strong academic record and hands-on experience with engineering tools.\n\nI am a detail-oriented professional who values precision and safety. I am a quick learner and work well in collaborative environments. I am excited about the opportunity to start my career at {company}.\n\n{resumeLink}{portfolioLink}\n\nSincerely,\n{name}",
+        "1–3 years":
+            "Dear Hiring Manager,\n\nI am applying for the {role} position at {company}. With over 2 years of experience in {skill}, I have gained practical knowledge in project execution and site management. I admire {company}'s reputation for excellence and would be honored to join your team.\n\nIn my previous roles, I have ensured quality standards and adhered to strict timelines. I am a problem solver who can think on their feet. I look forward to contributing to your projects.\n\n{resumeLink}{portfolioLink}\n\nBest regards,\n{name}",
+        "3–5 years":
+            "Dear Hiring Manager,\n\nI am writing to submit my candidacy for the {role} position at {company}. With close to 5 years of experience in {skill}, I have managed complex projects and led technical teams. I am impressed by {company}'s engineering achievements and am eager to contribute to your success.\n\nMy expertise includes design optimization, resource management, and quality control. I am a dedicated professional committed to delivering high-quality results. I am eager to bring my experience to the {role} role.\n\n{resumeLink}{portfolioLink}\n\nSincerely,\n{name}",
+      },
+      "LinkedIn Note": {
+        "Fresher (0 years)":
+            "Hi,\n\nI'm {name}, an engineering graduate passionate about {skill}. I admire {company}'s projects and would love to connect to learn from your expertise.\n\nThanks,\n{name}",
+        "1–3 years":
+            "Hello,\n\nI'm {name}, an engineer with experience in {skill}. I've been following {company}'s work and would love to connect to discuss engineering best practices.\n\nBest,\n{name}",
+        "3–5 years":
+            "Hi,\n\nI'm {name}, a senior engineer specializing in {skill}. I admire {company}'s technical excellence and would love to connect with fellow professionals.\n\nRegards,\n{name}",
+      },
+      "Cold Email": {
+        "Fresher (0 years)":
+            "Subject: Aspiring Engineer for {role} at {company}\n\nHello,\n\nMy name is {name}, and I am a recent engineering graduate with a focus on {skill}. I am writing to express my interest in the {role} opportunity at {company}. I am eager to apply my skills to your projects.\n\nI would love to connect for a brief chat. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nBest regards,\n{name}",
+        "1–3 years":
+            "Subject: Application for {role} - {name}\n\nHi,\n\nI am {name}, an engineer with experience in {skill}. I am interested in the {role} position at {company}. I believe my background in project execution aligns well with your needs.\n\nI would welcome the chance to discuss how I can contribute. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nBest,\n{name}",
+        "3–5 years":
+            "Subject: Experienced Engineer for {role} - {name}\n\nHello,\n\nMy name is {name}, and I am an experienced engineer specializing in {skill}. I am interested in the {role} opening at {company}. With a strong track record in project management, I am confident in my ability to make an impact.\n\nI would love to discuss how my experience fits your team. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nRegards,\n{name}",
+      },
+    },
+    "BPO & Support": {
+      "Cover Letter": {
+        "Fresher (0 years)":
+            "Dear Hiring Manager,\n\nI am writing to apply for the {role} position at {company}. As a fresh graduate with excellent communication skills and a focus on {skill}, I am eager to start my career in the customer support industry. I am a good listener and have a patient demeanor.\n\nI am a quick learner who is ready to handle customer queries effectively. I am confident that my dedication to customer satisfaction will make me a valuable asset to your team.\n\n{resumeLink}{portfolioLink}\n\nSincerely,\n{name}",
+        "1–3 years":
+            "Dear Hiring Manager,\n\nI am excited to apply for the {role} position at {company}. With over 2 years of experience in {skill}, I have a proven track record of resolving customer issues and maintaining high satisfaction scores. I admire {company}'s commitment to service excellence.\n\nIn my previous role, I handled high volumes of interactions with professionalism and empathy. I am adaptable and can work well under pressure. I look forward to bringing my skills to your team.\n\n{resumeLink}{portfolioLink}\n\nBest regards,\n{name}",
+        "3–5 years":
+            "Dear Hiring Manager,\n\nI am submitting my application for the {role} position at {company}. With close to 5 years of experience in {skill}, I have managed teams and improved support processes. I am impressed by {company}'s customer-centric approach.\n\nMy background includes quality assurance, training, and escalation management. I am a dedicated professional committed to delivering exceptional service. I am eager to bring my experience to the {role} role.\n\n{resumeLink}{portfolioLink}\n\nSincerely,\n{name}",
+      },
+      "LinkedIn Note": {
+        "Fresher (0 years)":
+            "Hi,\n\nI'm {name}, a fresh graduate interested in {skill}. I admire {company}'s service standards and would love to connect to learn more about the industry.\n\nThanks,\n{name}",
+        "1–3 years":
+            "Hello,\n\nI'm {name}, a support professional with experience in {skill}. I've been following {company}'s growth and would love to connect.\n\nBest,\n{name}",
+        "3–5 years":
+            "Hi,\n\nI'm {name}, a support team lead specializing in {skill}. I admire {company}'s operations and would love to connect with fellow professionals.\n\nRegards,\n{name}",
+      },
+      "Cold Email": {
+        "Fresher (0 years)":
+            "Subject: Aspiring Support Specialist for {role} at {company}\n\nHello,\n\nMy name is {name}, and I am a recent graduate with a focus on {skill}. I am writing to express my interest in the {role} opportunity at {company}. I am eager to provide excellent service to your customers.\n\nI would love to connect for a brief chat. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nBest regards,\n{name}",
+        "1–3 years":
+            "Subject: Application for {role} - {name}\n\nHi,\n\nI am {name}, a support specialist with experience in {skill}. I am interested in the {role} position at {company}. I believe my background in customer care aligns well with your needs.\n\nI would welcome the chance to discuss how I can contribute. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nBest,\n{name}",
+        "3–5 years":
+            "Subject: Experienced Support Lead for {role} - {name}\n\nHello,\n\nMy name is {name}, and I am an experienced support professional specializing in {skill}. I am interested in the {role} opening at {company}. With a strong track record in team management, I am confident in my ability to make an impact.\n\nI would love to discuss how my experience fits your team. My resume is available at {resumeLink}, and you can view my portfolio at {portfolioLink}.\n\nRegards,\n{name}",
+      },
+    },
+  };
+
+  String _getTemplate(String industry, String docType, String experience) {
+    var indMap =
+        _advancedTemplates[industry] ?? _advancedTemplates["IT & Software"]!;
+    var typeMap = indMap[docType] ?? indMap["Cover Letter"]!;
+    return typeMap[experience] ?? "Template not found.";
+  }
+
+  String _applyTone(String content, String tone) {
+    if (tone == "Warm") {
+      return content
+          .replaceAll("Dear Hiring Manager,", "Hi Hiring Team,")
+          .replaceAll("Sincerely,", "Warmly,")
+          .replaceAll("Best regards,", "Best,");
+    } else if (tone == "Salesy / Persuasive") {
+      return content
+          .replaceAll("I am writing to apply", "I am excited to apply")
+          .replaceAll("Sincerely,", "Let's connect,")
+          .replaceAll("Best regards,", "Looking forward to hearing from you,");
+    }
+    return content; // Formal is default
+  }
+
+
+
+  List<String> _getTips() {
+    if (_selectedDocType == null || _selectedExperience == null) return [];
+
+    if (_selectedDocType == "Cover Letter") {
+      if (_selectedExperience == "Fresher (0 years)") {
+        return [
+          "Focus on academic projects and internships.",
+          "Show willingness to learn and adapt.",
+          "Keep it 200–300 words; avoid long paragraphs."
+        ];
+      } else {
+        return [
+          "Highlight 2–3 soft skills like communication and ownership.",
+          "Mention specific impact or results.",
+          "Keep the closing professional."
+        ];
+      }
+    } else if (_selectedDocType == "Cold Email") {
+      return [
+        "Mention one measurable result.",
+        "Personalize the email with the company name.",
+        "End with a soft CTA like 'open to a quick call'."
+      ];
+    } else if (_selectedDocType == "LinkedIn Note") {
+      return [
+        "Be friendly and concise.",
+        "Mention how you found them.",
+        "Make a gentle request to connect."
+      ];
+    }
+    return [];
+  }
+
+  String _getSmartClosing(String tone, String experience) {
+    if (experience.contains("Fresher")) {
+      if (tone == "Warm") {
+        return "As I begin my professional journey, I am genuinely excited about the chance to learn from your team and contribute wherever I can.";
+      } else if (tone == "Salesy / Persuasive") {
+        return "I am eager to bring my energy and dedication to your team and help drive results from day one.";
+      } else {
+        return "I am eager to launch my career in a dynamic environment where I can contribute to innovative solutions.";
+      }
+    } else if (experience.contains("1–3")) {
+      if (tone == "Warm") {
+        return "I would love to bring my experience and enthusiasm to your team and contribute to your ongoing success.";
+      } else if (tone == "Salesy / Persuasive") {
+        return "I am confident that my background will allow me to hit the ground running and deliver immediate value.";
+      } else {
+        return "With my hands-on experience and strong ownership mindset, I am confident that I can add meaningful value from day one.";
+      }
+    } else {
+      // 3-5 years
+      if (tone == "Warm") {
+        return "I look forward to the possibility of collaborating with your talented team and achieving great things together.";
+      } else if (tone == "Salesy / Persuasive") {
+        return "I would welcome the opportunity to discuss how I can help your team exceed its targets and replicate similar wins at {company}.";
+      } else {
+        return "I am confident that my expertise and leadership skills would make me a valuable addition to your organization.";
+      }
+    }
+  }
+
+  String _cleanUpText(String input) {
+    String text = input.replaceAll(RegExp(r'\s+'), ' '); // Fix double spaces
+    text = text.replaceAll(" i ", " I "); // Fix lowercase i
+    text = text.replaceAll(" ,", ","); // Fix space before comma
+    text = text.replaceAll(" .", "."); // Fix space before dot
+    // Capitalize sentences
+    text = text.replaceAllMapped(RegExp(r'(^|[.!?]\s+)([a-z])'), (match) {
+      return '${match.group(1)}${match.group(2)!.toUpperCase()}';
+    });
+    return text.trim();
+  }
+
+  void _applyRewrite(String type) {
+    if (_generatedContent.isEmpty) return;
+
+    String current = _generatedContent;
+    String newContent = current;
+
+    if (type == "Make it Shorter") {
+      List<String> paragraphs = current.split('\n\n');
+      if (paragraphs.length > 3) {
+        paragraphs.removeAt(1);
+        newContent = paragraphs.join('\n\n');
+      }
+    } else if (type == "Make it Longer") {
+      if (!current.contains("collaborative")) {
+        newContent = current.replaceFirst(
+            "Sincerely,",
+            "I thrive in collaborative environments and am always eager to support my colleagues in achieving shared goals.\n\nSincerely,");
+      }
+    } else if (type == "Simpler Language") {
+      newContent = current
+          .replaceAll("utilize", "use")
+          .replaceAll("demonstrate", "show")
+          .replaceAll("collaborate", "work with")
+          .replaceAll("proficient", "good at")
+          .replaceAll("extensive", "a lot of");
+    } else if (type == "More Formal") {
+      newContent = current
+          .replaceAll("I'd love", "I would appreciate the opportunity")
+          .replaceAll("really excited", "keenly interested")
+          .replaceAll("Hi there", "Dear Hiring Manager")
+          .replaceAll("Best,", "Sincerely,");
+    }
+
+    setState(() {
+      _generatedContent = _cleanUpText(newContent);
+    });
+  }
+
+  void _generateAchievement() {
+    if (_achievementRoleController.text.isNotEmpty &&
+        _achievementMetricController.text.isNotEmpty &&
+        _achievementResultController.text.isNotEmpty) {
+      setState(() {
+        _achievementSentence =
+            "In my role as ${_achievementRoleController.text}, I achieved ${_achievementMetricController.text}, resulting in ${_achievementResultController.text}.";
+      });
+    }
+  }
+
+  void _generateContent(String industry) {
+    if (_formKey.currentState!.validate()) {
+      String rawTemplate =
+          _getTemplate(industry, _selectedDocType!, _selectedExperience!);
+
+      String finalSkill = _selectedSkill == "Other"
+          ? _customSkillController.text
+          : _selectedSkill!;
+
+      String resumeText = _resumeController.text.isNotEmpty
+          ? "You can find more details in my resume: ${_resumeController.text}. "
+          : "";
+      String portfolioText = _portfolioController.text.isNotEmpty
+          ? "You can also view my portfolio here: ${_portfolioController.text}."
+          : "";
+
+      if (industry == "BPO & Support" && _portfolioController.text.isEmpty) {
+        portfolioText = "";
+      }
+
+      String content = rawTemplate
+          .replaceAll("{name}", _nameController.text)
+          .replaceAll("{skill}", finalSkill)
+          .replaceAll("{company}",
+              _companyController.text.isNotEmpty ? _companyController.text : "your company")
+          .replaceAll("{role}",
+              _roleController.text.isNotEmpty ? _roleController.text : "the position")
+          .replaceAll("{resumeLink}", resumeText)
+          .replaceAll("{portfolioLink}", portfolioText);
+
+      // 1. Insert Strengths
+      if (_selectedStrengths.isNotEmpty) {
+        String strengthsPhrase =
+            "I am especially known for my ${_selectedStrengths.join(', ')}.";
+        // Insert after the first paragraph
+        int firstBreak = content.indexOf('\n\n');
+        if (firstBreak != -1) {
+          content = content.replaceRange(
+              firstBreak, firstBreak, " $strengthsPhrase");
+        }
+      }
+
+      // 2. Insert Achievement (if not Fresher)
+      if (!_selectedExperience!.contains("Fresher") &&
+          _achievementSentence.isNotEmpty) {
+        // Insert before closing
+        int lastBreak = content.lastIndexOf('\n\n');
+        if (lastBreak != -1) {
+          content = content.replaceRange(
+              lastBreak, lastBreak, "\n\n$_achievementSentence");
+        }
+      }
+
+      // 3. Smart Closing
+      String smartClosing =
+          _getSmartClosing(_selectedTone, _selectedExperience!);
+      // Replace standard closing paragraph if possible, or append
+      // For simplicity, we'll append it before the sign-off if the template structure allows,
+      // or just replace the last paragraph before sign-off.
+      // Here we will just append it as a new paragraph before the sign-off.
+      int signOffIndex = content.lastIndexOf("Sincerely,");
+      if (signOffIndex == -1) signOffIndex = content.lastIndexOf("Best regards,");
+      if (signOffIndex != -1) {
+        content = content.replaceRange(
+            signOffIndex, signOffIndex, "$smartClosing\n\n");
+      }
+
+      // 4. ATS Keywords
+      if (_optimizeATS) {
+        List<String> keywords = _atsKeywords[industry] ?? [];
+        if (keywords.isNotEmpty) {
+          content +=
+              "\n\n(Relevant Skills: ${keywords.join(', ')} - optimized for ATS)";
+        }
+      }
+
+      // 5. Signature
+      if (_addSignature) {
+        // Remove existing name at the bottom to avoid duplication if we are adding a full block
+        // But templates have {name} at the end.
+        // Let's just append the signature block if requested.
+        // Actually, let's replace the simple {name} at the end with the block.
+        // The template replacement already put the name there.
+        // So we can replace the last occurrence of the name with the block.
+        String name = _nameController.text;
+        int lastNameIdx = content.lastIndexOf(name);
+        if (lastNameIdx != -1) {
+          String sigBlock = "$name\nEmail: [Your Email]";
+          content = content.replaceRange(lastNameIdx, lastNameIdx + name.length, sigBlock);
+        }
+      }
+
+      // Apply Tone
+      content = _applyTone(content, _selectedTone);
+
+      // Cleanup
+      content = _cleanUpText(content);
+
+      setState(() {
+        _generatedContent = content;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _customSkillController.dispose();
+    _companyController.dispose();
+    _roleController.dispose();
+    _resumeController.dispose();
+    _portfolioController.dispose();
+    _achievementRoleController.dispose();
+    _achievementMetricController.dispose();
+    _achievementResultController.dispose();
+    super.dispose();
+  }
+
+  bool _isInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialized) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      String industry = "IT & Software";
+      if (args is String) {
+        industry = args;
+      } else if (args is Map) {
+        industry = args['industry'] ?? "IT & Software";
+      }
+
+      if (args is Map) {
+        final profile = args['profile'] as UserProfile?;
+        if (profile != null) {
+          _nameController.text = profile.name;
+          if (_experienceLevels.contains(profile.experienceBand)) {
+            _selectedExperience = profile.experienceBand;
+          }
+          
+          // Smart Skill Selection
+          final industrySkills = _industrySkills[industry] ?? [];
+          String? matchedSkill;
+          for (final skill in profile.skills) {
+            if (industrySkills.contains(skill)) {
+              matchedSkill = skill;
+              break;
+            }
+          }
+
+          if (matchedSkill != null) {
+            _selectedSkill = matchedSkill;
+          } else if (profile.skills.isNotEmpty) {
+            _selectedSkill = "Other";
+            _customSkillController.text = profile.skills.join(", ");
+          }
+          
+          _resumeController.text = profile.resumeUrl ?? "";
+          _portfolioController.text = profile.portfolioUrl ?? "";
+        }
+      }
+      _isInitialized = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    String industry = "IT & Software";
+    if (args is String) {
+      industry = args;
+    } else if (args is Map) {
+      industry = args['industry'] ?? "IT & Software";
+    }
+
+    final skills =
+        _industrySkills[industry] ?? _industrySkills["IT & Software"]!;
+
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: Text('$industry Writer'),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 1. Summary Card
+                      _buildSummaryCard(industry),
+                      const SizedBox(height: 16),
+
+                      // 2. Core Inputs Card
+                      _buildCoreInputsCard(skills),
+                      const SizedBox(height: 16),
+
+                      // 3. Advanced Customization
+                      _buildAdvancedCustomization(),
+                      const SizedBox(height: 16),
+
+                      // 4. Coaching & Guidance
+                      _buildCoachingGuidance(industry),
+                      const SizedBox(height: 24),
+
+                      // 5. Generate Button
+                      ElevatedButton(
+                        onPressed: () => _generateContent(industry),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: Text(
+                          'Generate Application',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 6. Output & Preview
+                      if (_generatedContent.isNotEmpty) ...[
+                        _buildOutputCard(),
+                        const SizedBox(height: 16),
+                        // 7. Actions Row
+                        _buildActionsRow(),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // 8. Ad Banner
+            Container(
+              height: 60,
+              width: double.infinity,
+              color: Colors.grey[200],
+              alignment: Alignment.center,
+              child: Text(
+                'Ad Banner Area',
+                style: GoogleFonts.poppins(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(String industry) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Summary',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(
+                  label: Text('Industry: $industry'),
+                  backgroundColor: Colors.blue.shade50,
+                  labelStyle: GoogleFonts.poppins(fontSize: 12),
+                ),
+                Chip(
+                  label: Text('Type: ${_selectedDocType ?? "Not selected"}'),
+                  backgroundColor: Colors.blue.shade50,
+                  labelStyle: GoogleFonts.poppins(fontSize: 12),
+                ),
+                Chip(
+                  label: Text(
+                      'Experience: ${_selectedExperience ?? "Not selected"}'),
+                  backgroundColor: Colors.blue.shade50,
+                  labelStyle: GoogleFonts.poppins(fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoreInputsCard(List<String> skills) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Core Details',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              key: ValueKey(_selectedDocType),
+            initialValue: _selectedDocType,
+              decoration: InputDecoration(
+                labelText: 'Document Type',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              items: _docTypes.map((type) {
+                return DropdownMenuItem(
+                  value: type,
+                  child: Text(type),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedDocType = value;
+                });
+              },
+              validator: (value) =>
+                  value == null ? 'Please select a type' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'Your Name',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              validator: (value) => value == null || value.isEmpty
+                  ? 'Please enter your name'
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey(_selectedExperience),
+            initialValue: _selectedExperience,
+              decoration: InputDecoration(
+                labelText: 'Experience Level',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              items: _experienceLevels.map((level) {
+                return DropdownMenuItem(
+                  value: level,
+                  child: Text(level),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedExperience = value;
+                });
+              },
+              validator: (value) =>
+                  value == null ? 'Please select experience level' : null,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey(_selectedSkill),
+            initialValue: _selectedSkill,
+              decoration: InputDecoration(
+                labelText: 'Top Skill',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              items: skills.map((skill) {
+                return DropdownMenuItem(
+                  value: skill,
+                  child: Text(skill),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedSkill = value;
+                });
+              },
+              validator: (value) =>
+                  value == null ? 'Please select a skill' : null,
+            ),
+            if (_selectedSkill == "Other") ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _customSkillController,
+                decoration: InputDecoration(
+                  labelText: 'Enter Custom Skill',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Please enter your skill'
+                    : null,
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _companyController,
+              decoration: InputDecoration(
+                labelText: 'Target Company Name',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onChanged: (value) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _roleController,
+              decoration: InputDecoration(
+                labelText: 'Target Role Title',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onChanged: (value) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _resumeController,
+              decoration: InputDecoration(
+                labelText: 'Resume URL (Optional)',
+                hintText: 'https://...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _portfolioController,
+              decoration: InputDecoration(
+                labelText: 'Portfolio URL (Optional)',
+                hintText: 'https://...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdvancedCustomization() {
+    // Get strengths for the current industry
+    final args = ModalRoute.of(context)?.settings.arguments;
+    String industry = "IT & Software";
+    if (args is String) {
+      industry = args;
+    } else if (args is Map) {
+      industry = args['industry'] ?? "IT & Software";
+    }
+    final strengths =
+        _industryStrengths[industry] ?? _industryStrengths["IT & Software"]!;
+
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ExpansionTile(
+        title: Text(
+          'Advanced Customization (Optional)',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        subtitle: Text(
+          'Fine-tune tone, strengths, achievements & ATS options',
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+        ),
+        childrenPadding: const EdgeInsets.all(16),
+        children: [
+          DropdownButtonFormField<String>(
+            key: ValueKey(_selectedTone),
+            initialValue: _selectedTone,
+            decoration: InputDecoration(
+              labelText: 'Tone',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            items: _tones.map((tone) {
+              return DropdownMenuItem(
+                value: tone,
+                child: Text(tone),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedTone = value!;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          // Strength Selector
+          Text(
+            'Select Key Strengths (Max 3)',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: strengths.map((strength) {
+              final isSelected = _selectedStrengths.contains(strength);
+              return ChoiceChip(
+                label: Text(strength),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      if (_selectedStrengths.length < 3) {
+                        _selectedStrengths.add(strength);
+                      }
+                    } else {
+                      _selectedStrengths.remove(strength);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+
+          Text(
+            'Achievements (Optional)',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _achievementRoleController,
+            decoration: InputDecoration(
+              labelText: 'Role / Responsibility',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _achievementMetricController,
+                  decoration: InputDecoration(
+                    labelText: 'Metric (e.g. 20%)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  controller: _achievementResultController,
+                  decoration: InputDecoration(
+                    labelText: 'Result',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: _generateAchievement,
+            child: const Text('Generate Achievement Sentence'),
+          ),
+          if (_achievementSentence.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Text(
+                _achievementSentence,
+                style: GoogleFonts.poppins(fontSize: 12, color: Colors.green.shade900),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: Text('Add signature with name & email',
+                style: GoogleFonts.poppins(fontSize: 14)),
+            value: _addSignature,
+            onChanged: (val) => setState(() => _addSignature = val),
+            contentPadding: EdgeInsets.zero,
+          ),
+          SwitchListTile(
+            title: Text('Optimize for ATS',
+                style: GoogleFonts.poppins(fontSize: 14)),
+            subtitle: Text('Add relevant keywords',
+                style: GoogleFonts.poppins(fontSize: 12)),
+            value: _optimizeATS,
+            onChanged: (val) => setState(() => _optimizeATS = val),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoachingGuidance(String industry) {
+    final suggestions = _roleSuggestions[industry] ?? [];
+
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ExpansionTile(
+        title: Text(
+          'JobReady Coaching (Tips & Checks)',
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _saveAsPdf,
+                icon: const Icon(Icons.picture_as_pdf),
+                label: const Text('Save PDF'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[700],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            OutlinedButton(
+              onPressed: () => _applyRewrite("Make it Shorter"),
+              child: const Text('Make it Shorter'),
+            ),
+            OutlinedButton(
+              onPressed: () => _applyRewrite("Make it Longer"),
+              child: const Text('Make it Longer'),
+            ),
+            OutlinedButton(
+              onPressed: () => _applyRewrite("Simpler Language"),
+              child: const Text('Simpler Language'),
+            ),
+            OutlinedButton(
+              onPressed: () => _applyRewrite("More Formal"),
+              child: const Text('More Formal'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class SpeakerScreen extends StatefulWidget {
+  const SpeakerScreen({super.key});
+
+  @override
+  State<SpeakerScreen> createState() => _SpeakerScreenState();
+}
+
+class _SpeakerScreenState extends State<SpeakerScreen> {
+  // State Variables
+  String _currentQuestion = "Tap 'Next Question' to start.";
+  final _textController = TextEditingController();
+  
+  // Timer & Analysis
+  Timer? _timer;
+  int _elapsedSeconds = 0;
+  bool _isTimerRunning = false;
+  bool _showResults = false;
+  
+  // Analysis Results
+  Map<String, dynamic> _analysisResults = {};
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _nextQuestion(String industry) {
+    final questions = questionsByIndustry[industry] ?? hrQuestions;
+    setState(() {
+      _currentQuestion = (questions..toList()..shuffle()).first;
+      _resetState();
+    });
+  }
+
+  void _resetState() {
+    _timer?.cancel();
+    _textController.clear();
+    _elapsedSeconds = 0;
+    _isTimerRunning = false;
+    _showResults = false;
+    _analysisResults = {};
+    setState(() {});
+  }
+
+  void _startAnswer() {
+    _resetState(); // Clear previous
+    setState(() => _isTimerRunning = true);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() => _elapsedSeconds++);
+    });
+  }
+
+  void _stopAndAnalyze() {
+    _timer?.cancel();
+    setState(() => _isTimerRunning = false);
+    _analyzeText();
+  }
+
+  void _analyzeText() {
+    final text = _textController.text.trim();
+    if (text.isEmpty) return;
+
+    final result = SpeechAnalyzer.analyze(
+      transcript: text,
+      totalDurationSeconds: _elapsedSeconds.toDouble(),
+    );
+
+    // Feedback Tips
+    List<String> tips = [];
+    if (result.fillerCount > 2) tips.add("Reduce filler words ('um', 'like') to sound more professional.");
+    if (result.wpm < 120) tips.add("Try to speak a bit faster to maintain energy.");
+    if (result.wpm > 160) tips.add("Slow down slightly for better clarity.");
+    if (result.wordCount < 20) tips.add("Your answer is too short. Elaborate with examples.");
+    if (result.richness < 50 && result.wordCount > 30) tips.add("Try using more varied vocabulary to sound more articulate.");
+    if (result.repetitionRate > 5) tips.add("Avoid repeating words (e.g., 'very very').");
+    if (tips.isEmpty) tips.add("Great answer! Clear, well-paced, and confident.");
+
+    setState(() {
+      _analysisResults = {
+        'wordCount': result.wordCount,
+        'wpm': result.wpm.round(),
+        'fillers': result.fillerCount,
+        'pauses': result.pauseCount,
+        'richness': result.richness.round(),
+        'repetition': result.repetitionRate.round(),
+        'fluency': result.fluencyScore,
+        'pace': result.paceScore,
+        'clarity': result.clarityScore,
+        'confidence': result.confidenceScore,
+        'tips': tips,
+      };
+      _showResults = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    String industry = "IT & Software";
+    if (args is String) {
+      industry = args;
+    } else if (args is Map) {
+      industry = args['industry'] ?? "IT & Software";
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Voice Analysis'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Question Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    "Interview Question",
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.blue.shade700),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _currentQuestion,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.blue.shade900),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton.icon(
+                    onPressed: _isTimerRunning ? null : () => _nextQuestion(industry),
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: Text("New Question", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      side: BorderSide(color: Colors.blue.shade200),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Instructions
+            Text(
+              "Step 1: Tap 'Start Answer' & use keyboard mic to dictate.\nStep 2: Tap 'Stop & Analyze' when done.",
+              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600, height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+
+            // Input Area
+            TextField(
+              controller: _textController,
+              maxLines: 6,
+              decoration: InputDecoration(
+                hintText: "Tap the microphone icon on your keyboard and start speaking...",
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.blue)),
+              ),
+              style: GoogleFonts.poppins(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+
+            // Controls
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isTimerRunning ? null : _startAnswer,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(_isTimerRunning ? "Recording... $_elapsedSeconds s" : "Start Answer", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isTimerRunning ? _stopAndAnalyze : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text("Stop & Analyze", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+
+            // Results Section
+            if (_showResults) ...[
+              Text("Analysis Results", style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              
+              // Metrics Grid
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 2.5,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                children: [
+                  _buildMetricCard("Word Count", "${_analysisResults['wordCount']}", Icons.text_fields),
+                  _buildMetricCard("WPM", "${_analysisResults['wpm']}", Icons.speed),
+                  _buildMetricCard("Fillers", "${_analysisResults['fillers']}", Icons.warning_amber, isBad: _analysisResults['fillers'] > 2),
+                  _buildMetricCard("Pauses", "${_analysisResults['pauses']}", Icons.pause),
+                  _buildMetricCard("Richness", "${_analysisResults['richness']}%", Icons.style, isBad: _analysisResults['richness'] < 40),
+                  _buildMetricCard("Repetition", "${_analysisResults['repetition']}%", Icons.repeat, isBad: _analysisResults['repetition'] > 5),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Scores
+              _buildScoreBar("Fluency", _analysisResults['fluency'], Colors.blue),
+              _buildScoreBar("Confidence", _analysisResults['confidence'], Colors.purple),
+              _buildScoreBar("Clarity", _analysisResults['clarity'], Colors.orange),
+              _buildScoreBar("Pace", _analysisResults['pace'], Colors.green),
+              
+              const SizedBox(height: 24),
+
+              // Feedback
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [Icon(Icons.lightbulb, color: Colors.amber.shade800), SizedBox(width: 8), Text("Key Feedback", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.amber.shade900))]),
+                    const SizedBox(height: 8),
+                    ...(_analysisResults['tips'] as List<String>).map((tip) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("• ", style: TextStyle(fontSize: 16)),
+                          Expanded(child: Text(tip, style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87))),
+                        ],
+                      ),
+                    )),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 32),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/leaks', arguments: industry),
+                icon: const Icon(Icons.visibility),
+                label: const Text('View Real Interview Questions'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const QuestionBankIndustrySelectorScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'See real interview questions → Open Question Bank',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String label, String value, IconData icon, {bool isBad = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isBad ? Colors.red.shade50 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isBad ? Colors.red.shade200 : Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: isBad ? Colors.red : Colors.grey.shade700, size: 20),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(value, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScoreBar(String label, double score, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+              Text("${score.round()}/100", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: color)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: score / 100,
+              backgroundColor: color.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class InterviewLeaksScreen extends StatelessWidget {
+  const InterviewLeaksScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final industry = ModalRoute.of(context)?.settings.arguments as String? ?? "All Industries";
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('InterviewLeaksScreen'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Showing recent questions from multiple companies',
+              style: GoogleFonts.poppins(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Focus on $industry',
+              style: GoogleFonts.poppins(
+                fontSize: 18, 
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor
+              ),
+            ),
+            const SizedBox(height: 32),
+            const Text('Coming Soon'),
+          ],
+        ),
+      ),
+    );
+  }
+}
