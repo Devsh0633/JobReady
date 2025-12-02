@@ -11,6 +11,9 @@ import '../../logic/question_bank_ad_controller.dart';
 import '../viewer/question_bank_viewer_screen.dart';
 
 
+import '../../../../ui/widgets/ad_banner.dart';
+import '../../../ads/ad_helper.dart';
+
 class QuestionBankIndustrySelectorScreen extends StatefulWidget {
   const QuestionBankIndustrySelectorScreen({super.key});
 
@@ -32,6 +35,9 @@ class _QuestionBankIndustrySelectorScreenState
     super.initState();
     // In future: you can load user profile and map to _selectedIndustry here.
     _initAdState();
+    // Preload ads when entering this screen
+    AdHelper.loadRewardedAd();
+    AdHelper.loadInterstitialAd();
   }
 
   Future<void> _initAdState() async {
@@ -44,47 +50,59 @@ class _QuestionBankIndustrySelectorScreenState
   }
 
   Future<void> _onWatchAdForAdFree() async {
-    // For judges: this dialog simulates a 30-second rewarded video.
-    // In production, you would load & show a RewardedAd here.
-    final rewarded = await showDialog<bool>(
+    // Show loading indicator briefly
+    showDialog(
       context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Watch Video to Remove Ads'),
-          content: Text(
-            'Simulated 30-second rewarded video ad.\n\n'
-            'Tap "Reward Me" to unlock ad-free Question Bank for the rest of today.',
-            style: GoogleFonts.inter(fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Reward Me'),
-            ),
-          ],
-        );
-      },
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    if (rewarded == true) {
-      await _adController.unlockAdFreeDay();
-      final adFree = await _adController.isAdFree();
+    bool rewardEarned = false;
+
+    final adShown = await AdHelper.showRewardedAd(
+      context, 
+      onUserEarnedReward: (reward) {
+        rewardEarned = true;
+      },
+      onDismissed: () async {
+        // Always close the loading dialog first
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.of(context).pop(); 
+        }
+
+        if (rewardEarned) {
+          await _adController.unlockAdFreeDay();
+          final adFree = await _adController.isAdFree();
+          if (mounted) {
+            setState(() {
+              _adFree = adFree;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Ads removed for the rest of today in Question Bank.',
+                  style: GoogleFonts.inter(fontSize: 13),
+                ),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+    );
+
+    if (!adShown) {
+      // If ad wasn't shown (because it wasn't ready), the onDismissed might have been called 
+      // by our helper, popping the dialog. But just in case, let's make sure user knows.
+      // Note: AdHelper calls onDismissed even if not shown, so dialog is already popped.
       if (mounted) {
-        setState(() {
-          _adFree = adFree;
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Ads removed for the rest of today in Question Bank.',
+              'Ad is still loading. Please try again in a few seconds.',
               style: GoogleFonts.inter(fontSize: 13),
             ),
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -122,23 +140,9 @@ class _QuestionBankIndustrySelectorScreenState
       return const SizedBox.shrink();
     }
 
-    return Container(
-      height: 56,
-      width: double.infinity,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
-      child: Text(
-        'Ad Banner',
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          color: Colors.grey.shade600,
-        ),
-      ),
+    return const Padding(
+      padding: EdgeInsets.only(top: 8.0),
+      child: AdBanner(),
     );
   }
 

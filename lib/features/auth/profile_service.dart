@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
+
 
 import 'user_profile.dart';
 
@@ -40,7 +41,9 @@ class ProfileService {
 
   /// Logout
   Future<void> logout() async {
+    debugPrint('ProfileService: Signing out...');
     await _auth.signOut();
+    debugPrint('ProfileService: Signed out. Current User: ${_auth.currentUser}');
   }
 
   /// Send password reset email
@@ -93,8 +96,8 @@ class ProfileService {
       }
       return null;
     } catch (e) {
-      print('Error loading profile: $e');
-      return null;
+      debugPrint('Error fetching profile: $e');
+      rethrow;
     }
   }
 

@@ -1,6 +1,7 @@
-import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../../features/ads/ad_config.dart';
 
 class AdBanner extends StatefulWidget {
   const AdBanner({super.key});
@@ -14,9 +15,8 @@ class _AdBannerState extends State<AdBanner> {
   bool _isLoaded = false;
 
   // Test Ad Unit IDs
-  final String _adUnitId = Platform.isAndroid
-      ? 'ca-app-pub-3940256099942544/6300978111'
-      : 'ca-app-pub-3940256099942544/2934735716';
+  // Get Ad Unit ID from centralized config
+  final String _adUnitId = AdConfig.bannerAdUnitId;
 
   @override
   void initState() {

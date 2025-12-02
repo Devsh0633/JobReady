@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../ui/widgets/ad_banner.dart';
 import '../../ai/ai_client.dart';
+import '../../ads/ad_helper.dart';
 
 import '../../auth/user_profile.dart';
 import '../../profile/candidate_profile.dart';
@@ -233,28 +234,19 @@ class _WriterScreenState extends State<WriterScreen> {
 
 
   Future<void> _handleAdGate(VoidCallback onSuccess) async {
+    // Show loading indicator briefly while ad prepares
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("Premium Feature"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text("Watching Ad...", style: GoogleFonts.inter()),
-          ],
-        ),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      Navigator.pop(context);
-      onSuccess();
-    }
+    await AdHelper.showInterstitialAd(context, onComplete: () {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading indicator
+        onSuccess();
+      }
+    });
   }
 
   Future<void> _saveAsPdf() async {

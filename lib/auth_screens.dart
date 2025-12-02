@@ -13,6 +13,7 @@ import 'package:file_picker/file_picker.dart';
 import 'features/profile/candidate_profile_service.dart';
 import 'features/profile/candidate_profile.dart';
 import 'features/profile/presentation/edit_profile_screen.dart';
+
 // ---------------------------------------------------------------------------
 // AUTH FLOW WIDGETS
 // ---------------------------------------------------------------------------
@@ -24,38 +25,93 @@ class AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-
-        if (snapshot.hasData) {
-          final user = snapshot.data!;
-          
-          // Check Email Verification
-          if (!user.emailVerified) {
-            return const VerifyEmailScreen();
-          }
-
-          // Check if Profile Exists
-          return FutureBuilder<UserProfile?>(
-            future: ProfileService().loadProfile(),
-            builder: (context, profileSnapshot) {
-              if (profileSnapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(body: Center(child: CircularProgressIndicator()));
-              }
-              
-              if (profileSnapshot.hasData && profileSnapshot.data != null) {
-                return PersonalizedHomeScreen(profile: profileSnapshot.data!);
-              }
-              
-              // No profile found, go to onboarding
-              return const OnboardingScreen();
-            },
+        debugPrint('AuthGate: ConnectionState: ${snapshot.connectionState}, HasData: ${snapshot.hasData}, User: ${snapshot.data?.uid}');
+        
+        // 1. Loading State
+        if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
           );
         }
 
-        return const WelcomeScreen();
+        // 2. Unauthenticated State -> Welcome Screen
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const WelcomeScreen();
+        }
+
+        // 3. Authenticated State
+        final user = snapshot.data!;
+        debugPrint('AuthGate: User found: ${user.email}, Verified: ${user.emailVerified}');
+        
+        // 3a. Email Not Verified -> Verify Email Screen
+        if (!user.emailVerified) {
+          return const VerifyEmailScreen();
+        }
+
+        // 3b. Email Verified -> Dashboard (or Onboarding check if needed)
+        // 3b. Email Verified -> Check Profile
+        return FutureBuilder<UserProfile?>(
+          future: ProfileService().loadProfile(),
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (profileSnapshot.hasError) {
+              return Scaffold(
+                body: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error loading profile',
+                          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Please check your internet connection.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Trigger rebuild
+                            (context as Element).markNeedsBuild();
+                          },
+                          child: const Text('Retry'),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            await ProfileService().logout();
+                            // AuthGate will rebuild automatically
+                          },
+                          child: const Text('Logout'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            if (profileSnapshot.hasData && profileSnapshot.data != null) {
+              return PersonalizedHomeScreen(profile: profileSnapshot.data!);
+            }
+
+            return const OnboardingScreen();
+          },
+        ); 
       },
     );
   }
@@ -115,17 +171,21 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     try {
       setState(() => _isSendingVerification = true);
       await ProfileService().sendEmailVerification();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verification email sent! Check your inbox.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Verification email sent! Check your inbox.')),
+        );
+      }
       setState(() => _canResendEmail = false);
       Future.delayed(const Duration(seconds: 30), () {
         if (mounted) setState(() => _canResendEmail = true);
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSendingVerification = false);
     }
@@ -140,7 +200,14 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => ProfileService().logout(),
+            onPressed: () async {
+              await ProfileService().logout();
+              if (!context.mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const AuthGate()),
+                (route) => false,
+              );
+            },
           ),
         ],
       ),
@@ -162,6 +229,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 8),
+            Text(
+              '(Please also check your spam folder)',
+              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[500], fontStyle: FontStyle.italic),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: _canResendEmail ? _sendVerificationEmail : null,
@@ -176,7 +249,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             ),
             const SizedBox(height: 16),
             TextButton(
-              onPressed: () => ProfileService().logout(),
+              onPressed: () async {
+                await ProfileService().logout();
+                // AuthGate will handle navigation
+              },
               child: const Text('Cancel'),
             ),
           ],
@@ -211,14 +287,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
       
-      // AuthGate will handle navigation
+      // Check verification status explicitly
       if (mounted) {
-         // If we are on a separate route (e.g. pushed from welcome), we might need to pop or replace.
-         // But usually AuthGate is the root. If we are here, we probably pushed this screen.
-         // Let's pop until we are back to root or replace with AuthGate.
-         // Actually, if AuthGate is the root, and we are here, we might be in a pushed route.
-         // If we just pop, AuthGate will rebuild with new user.
-         Navigator.of(context).popUntil((route) => route.isFirst);
+         debugPrint('LoginScreen: Login successful. Popping to reveal AuthGate.');
+         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -230,6 +302,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
+
 
   Future<void> _resetPassword() async {
     final emailController = TextEditingController();
@@ -452,9 +526,8 @@ class _SignupScreenState extends State<SignupScreen> {
       await service.sendEmailVerification();
 
       if (mounted) {
-        // AuthGate will detect the new user. 
-        // Since email is not verified, it should show VerifyEmailScreen.
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        debugPrint('SignupScreen: Signup successful. Popping to reveal AuthGate.');
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -659,7 +732,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ],
   };
 
-  bool _isInitialized = false;
+
 
   @override
   void didChangeDependencies() {
@@ -731,23 +804,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               if (_selectedSkills.isEmpty) {
                 _selectedSkills.addAll(profile.skills.take(3));
               }
-              if (_selectedIndustry == null) {
-                _selectedIndustry = profile.primaryIndustry;
-              }
+              _selectedIndustry ??= profile.primaryIndustry;
             });
             
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Resume uploaded & analyzed successfully!')),
             );
           }
-        } catch (e) {
-           if (mounted) {
-            setState(() => _isAnalyzingResume = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to process resume: $e')),
-            );
+          } catch (e) {
+             if (mounted) {
+              setState(() => _isAnalyzingResume = false);
+              // Check if it's just an AI failure (which we now handle gracefully in service, but if service throws, it's a hard error)
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Resume uploaded, but AI analysis failed: $e. Please fill details manually.')),
+              );
+            }
           }
-        }
       }
     } catch (e) {
       debugPrint('Error picking file: $e');
@@ -812,7 +884,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print("DEBUG: Building OnboardingScreen. _isEditing: $_isEditing");
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
       appBar: AppBar(
@@ -1168,7 +1240,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(

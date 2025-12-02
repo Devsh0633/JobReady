@@ -11,8 +11,11 @@ import '../../data/bpo_questions.dart';
 import '../../logic/question_bank_ad_controller.dart';
 import '../../../community/presentation/new_thread_screen.dart';
 import '../../../community/data/community_post_model.dart';
+import '../../../ads/ad_helper.dart';
 
 
+
+import '../../../../ui/widgets/ad_banner.dart';
 
 class QuestionBankViewerScreen extends StatefulWidget {
   final IndustryCategory initialIndustry;
@@ -45,6 +48,11 @@ class _QuestionBankViewerScreenState extends State<QuestionBankViewerScreen> {
     _adController = QuestionBankAdController.instance;
     _currentIndex = widget.initialIndex.clamp(0, _questions.length - 1);
     _initAdState();
+    
+    // Preload ads
+    AdHelper.loadInterstitialAd();
+    AdHelper.loadRewardedAd();
+
     // Trigger fade-in animation
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
@@ -121,76 +129,60 @@ class _QuestionBankViewerScreenState extends State<QuestionBankViewerScreen> {
   }
 
   Future<void> _showInterstitialPlaceholder() async {
-    // For judges: this dialog simulates a full-screen interstitial ad.
-    // Here you would integrate google_mobile_ads InterstitialAd.
-    await showDialog<void>(
+    // Show loading indicator briefly
+    showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Interstitial Ad'),
-          content: Text(
-            'This is where a full-screen interstitial ad would show.\n\n'
-            'In production, replace this with a real InterstitialAd from google_mobile_ads.',
-            style: GoogleFonts.inter(fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close Ad'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
+
+    await AdHelper.showInterstitialAd(context, onComplete: () {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading
+      }
+    });
   }
 
   Future<void> _onWatchAdForAdFree() async {
-    // For judges: this dialog simulates a 30-second rewarded video.
-    // In production, you would load & show a RewardedAd here.
-    final rewarded = await showDialog<bool>(
+    // Show loading indicator briefly
+    showDialog(
       context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Watch Video to Remove Ads'),
-          content: Text(
-            'Simulated 30-second rewarded video ad.\n\n'
-            'Tap "Reward Me" to unlock ad-free Question Bank for the rest of today.',
-            style: GoogleFonts.inter(fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Reward Me'),
-            ),
-          ],
-        );
-      },
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    if (rewarded == true) {
-      await _adController.unlockAdFreeDay();
-      final adFree = await _adController.isAdFree();
-      if (mounted) {
-        setState(() {
-          _adFree = adFree;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Ads removed for the rest of today in Question Bank.',
-              style: GoogleFonts.inter(fontSize: 13),
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+    bool earnedReward = false;
+
+    await AdHelper.showRewardedAd(
+      context,
+      onUserEarnedReward: (reward) {
+        earnedReward = true;
+      },
+      onDismissed: () async {
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.of(context).pop(); // Close loading
+        }
+
+        if (earnedReward) {
+          await _adController.unlockAdFreeDay();
+          final adFree = await _adController.isAdFree();
+          if (mounted) {
+            setState(() {
+              _adFree = adFree;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Ads removed for the rest of today in Question Bank.',
+                  style: GoogleFonts.inter(fontSize: 13),
+                ),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       }
-    }
+    );
   }
 
   Widget _buildSectionHeader(String title) {
@@ -230,23 +222,9 @@ class _QuestionBankViewerScreenState extends State<QuestionBankViewerScreen> {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      height: 56,
-      width: double.infinity,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
-      child: Text(
-        'Ad Banner',
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          color: Colors.grey.shade600,
-        ),
-      ),
+    return const Padding(
+      padding: EdgeInsets.only(top: 8.0),
+      child: AdBanner(),
     );
   }
 

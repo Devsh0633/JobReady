@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:read_pdf_text/read_pdf_text.dart';
@@ -21,7 +22,7 @@ class CandidateProfileService {
       try {
         text = await ReadPdfText.getPDFtext(filePath);
       } catch (e) {
-        print("Error reading PDF: $e");
+        debugPrint("Error reading PDF: $e");
         throw Exception("Failed to extract text from PDF: $e");
       }
 
@@ -30,14 +31,29 @@ class CandidateProfileService {
       }
 
       // 2. Parse with Gemini (Real AI)
-      final Map<String, dynamic> jsonProfile = await AiClient.instance.parseResume(text);
+      Map<String, dynamic> jsonProfile = {};
+      try {
+        jsonProfile = await AiClient.instance.parseResume(text);
+      } catch (e) {
+        debugPrint("AI Analysis failed (Quota/Error): $e");
+        // Fallback: Continue without AI parsing
+        jsonProfile = {
+          'name': '',
+          'email': '',
+          'skills': [],
+          'experience': [],
+          'education': [],
+          'primaryIndustry': 'IT & Software', // Default
+          'yearsOfExperience': 'Fresher (0 years)', // Default
+        };
+      }
 
       // 3. Upload PDF to Firebase Storage
       String downloadUrl = "";
       try {
         downloadUrl = await uploadResume(File(filePath), userId);
       } catch (e) {
-        print("Error uploading resume: $e");
+        debugPrint("Error uploading resume: $e");
         // We continue even if upload fails, but ideally we should handle this.
         // For now, we'll just use the local path as fallback or empty.
       }
@@ -54,7 +70,7 @@ class CandidateProfileService {
 
       return profile;
     } catch (e) {
-      print('Error processing resume: $e');
+      debugPrint('Error processing resume: $e');
       rethrow;
     }
   }
@@ -82,7 +98,7 @@ class CandidateProfileService {
     try {
       await _profiles.doc(profile.userId).set(profile.toJson());
     } catch (e) {
-      print('Error saving candidate profile: $e');
+      debugPrint('Error saving candidate profile: $e');
       rethrow;
     }
   }
@@ -95,7 +111,7 @@ class CandidateProfileService {
       }
       return null;
     } catch (e) {
-      print('Error fetching candidate profile: $e');
+      debugPrint('Error fetching candidate profile: $e');
       return null;
     }
   }

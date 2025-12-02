@@ -5,33 +5,30 @@ import 'auth_screens.dart';
 import 'features/auth/presentation/welcome_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'features/dashboard/presentation/dashboard_screen.dart';
+
 import 'features/writer/presentation/writer_screen.dart';
 import 'features/speaker/presentation/speaker_screen.dart';
-import 'core/services/update_service.dart';
+
+
+
+
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'features/ads/ad_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await MobileAds.instance.initialize();
+  
+  // Preload ads
+  AdHelper.loadInterstitialAd();
+  AdHelper.loadRewardedAd();
+  
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  @override
-  void initState() {
-    super.initState();
-    // Check for updates after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      UpdateService().checkForUpdate(context);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +77,7 @@ class _MyAppState extends State<MyApp> {
       home: const AuthGate(),
       routes: {
         '/welcome': (context) => const WelcomeScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
+
         '/mode_selection': (context) => const ModeSelectionScreen(),
         '/writer': (context) => const WriterScreen(),
         '/speaker': (context) => const SpeakerScreen(),

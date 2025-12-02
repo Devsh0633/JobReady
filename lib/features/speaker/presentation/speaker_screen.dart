@@ -11,6 +11,8 @@ import '../../practice_interview/data/interview_questions.dart';
 import '../../auth/user_profile.dart';
 import '../../profile/candidate_profile.dart';
 import '../../profile/candidate_profile_service.dart';
+import '../../ads/ad_helper.dart';
+
 class SpeakerScreen extends StatefulWidget {
   const SpeakerScreen({super.key});
 
@@ -115,8 +117,19 @@ class _SpeakerScreenState extends State<SpeakerScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to generate questions. Using standard set.')),
         );
-        // Fallback to standard flow
-        setState(() => _isJobSetupComplete = true);
+        // Fallback to standard flow with default questions
+        setState(() {
+          _generatedQuestions = [
+            "Tell me about yourself.",
+            "What are your greatest strengths?",
+            "Why do you want to work here?",
+            "Describe a challenge you faced and how you overcame it.",
+            "Where do you see yourself in 5 years?"
+          ];
+          _currentQuestion = _generatedQuestions.first;
+          _currentQuestionIndex = 0;
+          _isJobSetupComplete = true;
+        });
       }
     }
   }
@@ -177,50 +190,37 @@ class _SpeakerScreenState extends State<SpeakerScreen> {
   }
 
   Future<void> _handleAdGate(VoidCallback onSuccess) async {
-    int countdown = 10;
-    
+    // Show loading indicator briefly
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          // Start timer inside the dialog if not already running
-          // But StatefulBuilder rebuilds, so we need a way to tick.
-          // Actually, let's use a Timer here.
-          Timer.periodic(const Duration(seconds: 1), (timer) {
-            if (countdown > 0) {
-              if (context.mounted) {
-                 setState(() => countdown--);
-              }
-            } else {
-              timer.cancel();
-              if (context.mounted) {
-                Navigator.pop(context); // Close dialog
-                onSuccess(); // Run success callback
-              }
-            }
-          });
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
 
-          return AlertDialog(
-            title: const Text("Ad Break"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.play_circle_outline, size: 48, color: Color(0xFF1A237E)),
-                const SizedBox(height: 16),
-                Text("Watching Ad...", style: GoogleFonts.inter()),
-                const SizedBox(height: 8),
-                Text(
-                  "$countdown s",
-                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Text("Analysis will start automatically.", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-          );
-        },
-      ),
+    bool rewardEarned = false;
+
+    await AdHelper.showRewardedAd(
+      context, 
+      onUserEarnedReward: (reward) {
+        // Mark reward as earned, but wait for dismissal to navigate
+        rewardEarned = true;
+      },
+      onDismissed: () {
+        // Always close the loading dialog first
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.of(context).pop(); 
+        }
+
+        // If reward was earned, proceed to analysis
+        if (rewardEarned) {
+          if (mounted) {
+            onSuccess();
+          }
+        } else {
+          // Optional: Show message that ad wasn't completed?
+          // For now, just do nothing (user stays on screen)
+        }
+      }
     );
   }
 
@@ -260,8 +260,9 @@ class _SpeakerScreenState extends State<SpeakerScreen> {
       });
     } catch (e) {
       if (mounted) {
+        debugPrint('AI Analysis Error: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI server unavailable. Please check your internet or API key.')),
+          SnackBar(content: Text('AI Analysis failed: ${e.toString().replaceAll("Exception:", "")}')),
         );
       }
     } finally {

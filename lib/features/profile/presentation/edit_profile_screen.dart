@@ -6,7 +6,7 @@ import '../../../auth_screens.dart'; // For PersonalizedHomeScreen navigation
 import '../../auth/user_profile.dart';
 import '../../auth/profile_service.dart';
 import '../candidate_profile_service.dart';
-import '../candidate_profile.dart';
+
 
 class EditProfileScreen extends StatefulWidget {
   final UserProfile profile;
@@ -130,7 +130,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }
         } catch (e) {
           if (mounted) {
-            setState(() => _isAnalyzingResume = false);
+            setState(() {
+              _isAnalyzingResume = false;
+              _resumeFileName = null; // Clear the file name as processing failed
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Failed to process resume: $e')),
             );
@@ -254,6 +257,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 Text('Professional Details', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
+                  // ignore: deprecated_member_use
                   value: _selectedIndustry,
                   decoration: const InputDecoration(
                     labelText: 'Industry',
@@ -271,6 +275,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
+                  // ignore: deprecated_member_use
                   value: _selectedExperience,
                   decoration: const InputDecoration(
                     labelText: 'Experience',

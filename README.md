@@ -50,5 +50,32 @@ To run this project locally, you would need to:
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
----
-*Submitted for the Google AdMob Challenge 2025*
+
+## 📱 Usage Guide
+
+### 1. Getting Started
+*   **Sign Up:** Create an account using your email and password.
+*   **Profile Setup:**
+    *   **Upload Resume (PDF):** The app uses AI to automatically parse your skills and experience.
+    *   *Note:* If the AI service is busy ("Resource exhausted"), the app will warn you but allow you to proceed. You can manually enter your details in this case.
+
+### 2. Personalized Dashboard
+*   Once your profile is ready, you will land on the **"Welcome Back"** screen.
+*   This dashboard gives you quick access to all tools tailored to your profile.
+
+### 3. Key Features
+*   **✍️ Writer (Application Assistant):**
+    *   Paste a Job Description (JD) and generate a custom Cover Letter or Cold Email.
+    *   The AI uses your resume context to make it personalized.
+*   **🎤 Speaker (Interview Coach):**
+    *   **Practice:** The app generates interview questions based on your role.
+    *   **Reliability:** If the AI is busy, it automatically loads a standard set of "Must-Know" questions so you can keep practicing.
+    *   **Feedback:** Speak your answer, and the AI will analyze your confidence, pace, and relevance.
+*   **📚 Question Bank:**
+    *   Browse a curated list of interview questions by industry (IT, Sales, Engineering, etc.).
+
+### 4. Troubleshooting
+*   **"Resource Exhausted" / AI Busy:**
+    *   This app uses Google's experimental **Gemini 2.0 Flash** model for speed.
+    *   If global demand is high, you might see a warning.
+    *   **Don't Worry:** The app automatically switches to the stable **Gemini 1.5 Flash** model or provides manual fallbacks so you can continue your work without interruption.

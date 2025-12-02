@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'ai_env.dart';
 import 'ai_models.dart';
@@ -23,7 +24,7 @@ class AiClient {
       throw AiException("Missing Gemini API Key in AiEnv");
     }
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       apiKey: AiEnv.geminiApiKey,
       generationConfig: GenerationConfig(
         temperature: 0.7,
@@ -38,16 +39,14 @@ class AiClient {
     try {
       return await _model.generateContent(content);
     } catch (e) {
-      if (e.toString().contains("not found") || e.toString().contains("404")) {
-        print("Primary model failed, trying fallback: gemini-pro");
+      if (e.toString().contains("not found") || e.toString().contains("404") || e.toString().contains("429") || e.toString().contains("Resource exhausted")) {
+        debugPrint("Primary model failed ($e), trying fallback: gemini-1.5-flash");
         final fallbackModel = GenerativeModel(
-          model: 'gemini-pro',
+          model: 'gemini-1.5-flash',
           apiKey: AiEnv.geminiApiKey,
           generationConfig: GenerationConfig(
             temperature: 0.7,
-            // gemini-pro might not support JSON mode natively in all versions, 
-            // but we'll try. If it fails, we might need to remove responseMimeType.
-             responseMimeType: 'application/json',
+            responseMimeType: 'application/json',
           ),
         );
         return await fallbackModel.generateContent(content);
@@ -119,6 +118,7 @@ RULES:
 
 EXPECTED OUTPUT JSON SCHEMA:
 {
+  "subject": "string (email subject line)",
   "content": "string (the actual email/note body)",
   "tone": "string",
   "usedSkills": ["string"],

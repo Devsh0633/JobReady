@@ -107,7 +107,7 @@ class _CommunityHeroButtonState extends State<CommunityHeroButton>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "Discuss. Learn. Share. Become interview ready.",
+                            "Discuss. Learn. Share. Become Job Ready Today",
                             style: GoogleFonts.poppins(
                               fontSize: 13,
                               color: Colors.black.withValues(alpha: 0.6),
